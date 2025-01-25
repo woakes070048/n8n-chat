@@ -1,38 +1,115 @@
+// n8n-chat.js
 (function() {
-    // Keep existing styles from the original widget...
+    // Load Geist font
+    const fontLink = document.createElement('link');
+    fontLink.rel = 'stylesheet';
+    fontLink.href = 'https://cdn.jsdelivr.net/npm/geist@1.0.0/dist/fonts/geist-sans/style.css';
+    document.head.appendChild(fontLink);
+
+    // Styles
     const styles = `
         .n8n-chat-widget {
             --chat--color-primary: var(--n8n-chat-primary-color, #854fff);
             --chat--color-secondary: var(--n8n-chat-secondary-color, #6b3fd4);
             font-family: 'Geist Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
         }
-        /* ... [previous styles remain the same] ... */
 
-        /* New styles for lead collection form */
-        .n8n-chat-widget .lead-form {
-            padding: 20px;
+        .n8n-chat-widget .chat-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: none;
+            width: 380px;
+            height: 600px;
             background: #ffffff;
-        }
-
-        .n8n-chat-widget .lead-form input {
-            width: 100%;
-            padding: 12px;
-            margin-bottom: 12px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(133, 79, 255, 0.15);
             border: 1px solid rgba(133, 79, 255, 0.2);
-            border-radius: 8px;
+            overflow: hidden;
             font-family: inherit;
-            font-size: 14px;
         }
 
-        .n8n-chat-widget .chat-options {
+        .n8n-chat-widget .chat-container.position-left {
+            right: auto;
+            left: 20px;
+        }
+
+        .n8n-chat-widget .chat-container.open {
             display: flex;
-            flex-wrap: wrap;
-            gap: 12px;
-            padding: 20px;
+            flex-direction: column;
         }
 
-        .n8n-chat-widget .chat-option-btn {
-            flex: 1 1 calc(50% - 6px);
+        .n8n-chat-widget .brand-header {
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid rgba(133, 79, 255, 0.1);
+            position: relative;
+        }
+
+        .n8n-chat-widget .close-button {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #666;
+            cursor: pointer;
+            padding: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.2s;
+            font-size: 20px;
+        }
+
+        .n8n-chat-widget .close-button:hover {
+            color: #333;
+        }
+
+        .n8n-chat-widget .brand-header img {
+            width: 32px;
+            height: 32px;
+            object-fit: contain;
+        }
+
+        .n8n-chat-widget .brand-header span {
+            font-size: 18px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .n8n-chat-widget .chat-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .n8n-chat-widget .welcome-screen {
+            padding: 20px;
+            text-align: center;
+        }
+
+        .n8n-chat-widget .welcome-text {
+            font-size: 24px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 24px;
+            line-height: 1.3;
+        }
+
+        .n8n-chat-widget .chat-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            padding: 0 20px;
+        }
+
+        .n8n-chat-widget .chat-button {
             padding: 16px;
             background: linear-gradient(135deg, var(--chat--color-primary) 0%, var(--chat--color-secondary) 100%);
             color: white;
@@ -42,149 +119,434 @@
             font-size: 14px;
             font-weight: 500;
             transition: transform 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
 
-        .n8n-chat-widget .chat-option-btn:hover {
+        .n8n-chat-widget .chat-button:hover {
             transform: scale(1.02);
+        }
+
+        .n8n-chat-widget .lead-form {
+            padding: 20px;
+            display: none;
+        }
+
+        .n8n-chat-widget .lead-form.active {
+            display: block;
+        }
+
+        .n8n-chat-widget .form-field {
+            margin-bottom: 16px;
+        }
+
+        .n8n-chat-widget .form-field label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .n8n-chat-widget .form-field input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid rgba(133, 79, 255, 0.2);
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+
+        .n8n-chat-widget .form-field input:focus {
+            outline: none;
+            border-color: var(--chat--color-primary);
+        }
+
+        .n8n-chat-widget .chat-interface {
+            display: none;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .n8n-chat-widget .chat-interface.active {
+            display: flex;
+        }
+
+        .n8n-chat-widget .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+
+        .n8n-chat-widget .chat-message {
+            padding: 12px 16px;
+            margin: 8px 0;
+            border-radius: 12px;
+            max-width: 80%;
+            word-wrap: break-word;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .n8n-chat-widget .chat-message.user {
+            background: linear-gradient(135deg, var(--chat--color-primary) 0%, var(--chat--color-secondary) 100%);
+            color: white;
+            margin-left: auto;
+        }
+
+        .n8n-chat-widget .chat-message.bot {
+            background: white;
+            border: 1px solid rgba(133, 79, 255, 0.2);
+            color: #333;
+        }
+
+        .n8n-chat-widget .chat-input {
+            padding: 16px;
+            background: white;
+            border-top: 1px solid rgba(133, 79, 255, 0.1);
+            display: flex;
+            gap: 8px;
+        }
+
+        .n8n-chat-widget .chat-input textarea {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid rgba(133, 79, 255, 0.2);
+            border-radius: 8px;
+            resize: none;
+            font-family: inherit;
+            font-size: 14px;
+            min-height: 24px;
+            max-height: 120px;
+        }
+
+        .n8n-chat-widget .chat-input button {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, var(--chat--color-primary) 0%, var(--chat--color-secondary) 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: transform 0.2s;
+        }
+
+        .n8n-chat-widget .chat-input button:hover {
+            transform: scale(1.05);
+        }
+
+        .n8n-chat-widget .chat-toggle {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            border-radius: 30px;
+            background: linear-gradient(135deg, var(--chat--color-primary) 0%, var(--chat--color-secondary) 100%);
+            color: white;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(133, 79, 255, 0.3);
+            z-index: 999;
+            transition: transform 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .n8n-chat-widget .chat-toggle.position-left {
+            right: auto;
+            left: 20px;
+        }
+
+        .n8n-chat-widget .chat-toggle svg {
+            width: 24px;
+            height: 24px;
+            fill: currentColor;
+        }
+
+        .n8n-chat-widget .chat-footer {
+            padding: 8px;
+            text-align: center;
+            background: white;
+            border-top: 1px solid rgba(133, 79, 255, 0.1);
+        }
+
+        .n8n-chat-widget .chat-footer a {
+            color: var(--chat--color-primary);
+            text-decoration: none;
+            font-size: 12px;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+        }
+
+        .n8n-chat-widget .chat-footer a:hover {
+            opacity: 1;
+        }
+
+        .n8n-chat-widget .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
     `;
 
-    // Default configuration with support for multiple webhooks
-    const defaultConfig = {
-        webhooks: [
-            {
-                id: 'general',
-                name: 'General Chat',
-                url: '',
-                route: 'general',
-                icon: '💬'
-            }
-            // Add more webhook configurations as needed
-        ],
-        branding: {
-            logo: '',
-            name: '',
-            welcomeText: '',
-            responseTimeText: '',
-            poweredBy: {
-                text: 'Powered by n8n',
-                link: 'https://n8n.partnerlinks.io/m8a94i19zhqq?utm_source=nocodecreative.io'
-            }
-        },
-        style: {
-            primaryColor: '',
-            secondaryColor: '',
-            position: 'right'
-        },
-        leadCollection: {
-            enabled: true,
-            fields: [
-                { name: 'name', label: 'Name', required: true },
-                { name: 'email', label: 'Email', required: true },
-                { name: 'company', label: 'Company', required: false }
-            ],
-            webhookUrl: '' // URL for sending lead data
+    // Inject styles
+    const styleSheet = document.createElement('style');
+    styleSheet.textContent = styles;
+    document.head.appendChild(styleSheet);
+
+    class N8nChat {
+        constructor(config) {
+            this.config = this.mergeConfig(config);
+            this.currentSessionId = '';
+            this.currentWebhook = null;
+            this.leadData = null;
+            this.initialize();
         }
-    };
 
-    // Merge user config with defaults
-    const config = window.ChatWidgetConfig ? 
-        {
-            webhooks: Array.isArray(window.ChatWidgetConfig.webhooks) ? 
-                window.ChatWidgetConfig.webhooks : defaultConfig.webhooks,
-            branding: { ...defaultConfig.branding, ...window.ChatWidgetConfig.branding },
-            style: { ...defaultConfig.style, ...window.ChatWidgetConfig.style },
-            leadCollection: { ...defaultConfig.leadCollection, ...window.ChatWidgetConfig.leadCollection }
-        } : defaultConfig;
-
-    let currentSessionId = '';
-    let currentWebhook = null;
-    let leadData = null;
-
-    function createChatOptionsHTML() {
-        return `
-            <div class="chat-options">
-                ${config.webhooks.map(webhook => `
-                    <button class="chat-option-btn" data-webhook-id="${webhook.id}">
-                        ${webhook.icon} ${webhook.name}
-                    </button>
-                `).join('')}
-            </div>
-        `;
-    }
-
-    function createLeadFormHTML() {
-        if (!config.leadCollection.enabled) return '';
-        
-        return `
-            <div class="lead-form">
-                ${config.leadCollection.fields.map(field => `
-                    <input 
-                        type="${field.name === 'email' ? 'email' : 'text'}"
-                        name="${field.name}"
-                        placeholder="${field.label}"
-                        ${field.required ? 'required' : ''}
-                    >
-                `).join('')}
-                <button class="new-chat-btn submit-lead-btn">Start Chat</button>
-            </div>
-        `;
-    }
-
-    async function submitLeadData() {
-        if (!config.leadCollection.enabled) return true;
-        
-        const formData = {};
-        const form = document.querySelector('.lead-form');
-        const inputs = form.querySelectorAll('input');
-        
-        inputs.forEach(input => {
-            formData[input.name] = input.value;
-        });
-
-        try {
-            const response = await fetch(config.leadCollection.webhookUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
+        mergeConfig(userConfig) {
+            const defaultConfig = {
+                webhooks: [],
+                branding: {
+                    logo: '',
+                    name: 'Chat Support',
+                    welcomeText: 'Hi 👋 How can we help?',
+                    responseTimeText: 'We typically respond right away',
+                    poweredBy: {
+                        text: 'Powered by n8n',
+                        link: 'https://n8n.io'
+                    }
                 },
-                body: JSON.stringify(formData)
+                style: {
+                    primaryColor: '#854fff',
+                    secondaryColor: '#6b3fd4',
+                    position: 'right'
+                },
+                leadCollection: {
+                    enabled: false,
+                    fields: []
+                }
+            };
+
+            return {
+                webhooks: userConfig.webhooks || defaultConfig.webhooks,
+                branding: { ...defaultConfig.branding, ...userConfig.branding },
+                style: { ...defaultConfig.style, ...userConfig.style },
+                leadCollection: { ...defaultConfig.leadCollection, ...userConfig.leadCollection }
+            };
+        }
+
+        initialize() {
+            this.createWidget();
+            this.attachEventListeners();
+        }
+
+        createWidget() {
+            const widget = document.createElement('div');
+            widget.className = 'n8n-chat-widget';
+            
+            // Set custom colors
+            widget.style.setProperty('--n8n-chat-primary-color', this.config.style.primaryColor);
+            widget.style.setProperty('--n8n-chat-secondary-color', this.config.style.secondaryColor);
+
+            widget.innerHTML = `
+                <div class="chat-container${this.config.style.position === 'left' ? ' position-left' : ''}">
+                    <div class="brand-header">
+                        <img src="${this.config.branding.logo}" alt="${this.config.branding.name}">
+                        <span>${this.config.branding.name}</span>
+                        <button class="close-button">×</button>
+                    </div>
+                    <div class="chat-content">
+                        <div class="welcome-screen">
+                            <h2 class="welcome-text">${this.config.branding.welcomeText}</h2>
+                            <div class="chat-buttons">
+                                ${this.config.webhooks.map(webhook => `
+                                    <button class="chat-button" data-webhook-id="${webhook.id}">
+                                        ${webhook.icon} ${webhook.name}
+                                    </button>
+                                `).join('')}
+                            </div>
+                            <p class="response-text">${this.config.branding.responseTimeText}</p>
+                        </div>
+                        
+                        <div class="lead-form">
+                            <form id="leadForm">
+                                ${this.config.leadCollection.fields.map(field => `
+                                    <div class="form-field">
+                                        <label for="${field.name}">${field.label}</label>
+                                        <input 
+                                            type="${field.type || 'text'}"
+                                            id="${field.name}"
+                                            name="${field.name}"
+                                            ${field.required ? 'required' : ''}
+                                            placeholder="${field.placeholder || ''}"
+                                        >
+                                    </div>
+                                `).join('')}
+                                <button type="submit" class="chat-button">Start Chat</button>
+                            </form>
+                        </div>
+
+                        <div class="chat-interface">
+                            <div class="chat-messages"></div>
+                            <div class="chat-input">
+                                <textarea placeholder="Type your message..." rows="1"></textarea>
+                                <button type="submit">Send</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chat-footer">
+                        <a href="${this.config.branding.poweredBy.link}" target="_blank">
+                            ${this.config.branding.poweredBy.text}
+                        </a>
+                    </div>
+                </div>
+                
+                <button class="chat-toggle${this.config.style.position === 'left' ? ' position-left' : ''}">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                        <path d="M12 2C6.477 2 2 6.477 2 12c0 1.821.487 3.53 1.338 5L2.5 21.5l4.5-.838A9.955 9.955 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18c-1.476 0-2.886-.313-4.156-.878l-3.156.586.586-3.156A7.962 7.962 0 014 12c0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8z"/>
+                    </svg>
+                </button>
+            `;
+
+            document.body.appendChild(widget);
+            this.widget = widget;
+        }
+
+        attachEventListeners() {
+            // Toggle chat window
+            this.widget.querySelector('.chat-toggle').addEventListener('click', () => {
+                this.widget.querySelector('.chat-container').classList.toggle('open');
             });
 
-            if (response.ok) {
-                leadData = formData;
-                return true;
+            // Close button
+            this.widget.querySelector('.close-button').addEventListener('click', () => {
+                this.widget.querySelector('.chat-container').classList.remove('open');
+            });
+
+            // Chat buttons
+            this.widget.querySelectorAll('.chat-button').forEach(button => {
+                button.addEventListener('click', () => {
+                    const webhookId = button.dataset.webhookId;
+                    this.handleWebhookSelection(webhookId);
+                });
+            });
+
+            // Lead form submission
+            if (this.config.leadCollection.enabled) {
+                const form = this.widget.querySelector('#leadForm');
+                form.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.handleLeadSubmission(new FormData(form));
+                });
             }
-            return false;
-        } catch (error) {
-            console.error('Error submitting lead data:', error);
-            return false;
+
+            // Send message
+            const sendButton = this.widget.querySelector('.chat-input button');
+            const textarea = this.widget.querySelector('.chat-input textarea');
+
+            sendButton.addEventListener('click', () => {
+                this.sendMessage(textarea.value);
+            });
+
+            textarea.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    this.sendMessage(textarea.value);
+                }
+            });
+
+            // Auto-resize textarea
+            textarea.addEventListener('input', () => {
+                textarea.style.height = 'auto';
+                textarea.style.height = textarea.scrollHeight + 'px';
+            });
         }
-    }
 
-    // Modified startNewConversation function to include lead data
-    async function startNewConversation(webhookId) {
-        if (!await submitLeadData()) {
-            alert('Failed to submit contact information. Please try again.');
-            return;
-        }
-
-        currentWebhook = config.webhooks.find(w => w.id === webhookId);
-        if (!currentWebhook) return;
-
-        currentSessionId = crypto.randomUUID();
-        const data = [{
-            action: "loadPreviousSession",
-            sessionId: currentSessionId,
-            route: currentWebhook.route,
-            metadata: {
-                userId: "",
-                leadData: leadData
+        async handleWebhookSelection(webhookId) {
+            this.currentWebhook = this.config.webhooks.find(w => w.id === webhookId);
+            
+            if (this.config.leadCollection.enabled) {
+                this.showLeadForm();
+            } else {
+                await this.startChat();
             }
-        }];
+        }
 
-        try {
-            const response = await fetch(currentWebhook.url, {
+        showLeadForm() {
+            this.widget.querySelector('.welcome-screen').style.display = 'none';
+            this.widget.querySelector('.lead-form').classList.add('active');
+        }
+
+        async handleLeadSubmission(formData) {
+            this.leadData = Object.fromEntries(formData.entries());
+            await this.startChat();
+        }
+
+        async startChat() {
+            if (!this.currentWebhook) return;
+
+            this.currentSessionId = crypto.randomUUID();
+            const data = {
+                action: "loadPreviousSession",
+                sessionId: this.currentSessionId,
+                route: this.currentWebhook.route,
+                metadata: {
+                    leadData: this.leadData
+                }
+            };
+
+            try {
+                const response = await this.sendWebhookRequest(this.currentWebhook.url, data);
+                this.showChatInterface(response);
+            } catch (error) {
+                console.error('Error starting chat:', error);
+                this.showError('Failed to start chat. Please try again.');
+            }
+        }
+
+        async sendMessage(message) {
+            if (!message.trim()) return;
+
+            const textarea = this.widget.querySelector('.chat-input textarea');
+            textarea.value = '';
+            textarea.style.height = 'auto';
+
+            this.addMessage(message, 'user');
+
+            const data = {
+                action: "sendMessage",
+                sessionId: this.currentSessionId,
+                route: this.currentWebhook.route,
+                chatInput: message,
+                metadata: {
+                    leadData: this.leadData
+                }
+            };
+
+            try {
+                const response = await this.sendWebhookRequest(this.currentWebhook.url, data);
+                this.addMessage(response.output || response[0].output, 'bot');
+            } catch (error) {
+                console.error('Error sending message:', error);
+                this.showError('Failed to send message. Please try again.');
+            }
+        }
+
+        async sendWebhookRequest(url, data) {
+            const response = await fetch(url, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -192,56 +554,43 @@
                 body: JSON.stringify(data)
             });
 
-            // ... Rest of the conversation handling code ...
-        } catch (error) {
-            console.error('Error:', error);
-        }
-    }
-
-    // Modified sendMessage function to include lead data
-    async function sendMessage(message) {
-        const messageData = {
-            action: "sendMessage",
-            sessionId: currentSessionId,
-            route: currentWebhook.route,
-            chatInput: message,
-            metadata: {
-                userId: "",
-                leadData: leadData
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
-        };
 
-        // ... Rest of the message handling code ...
-    }
+            return response.json();
+        }
 
-    // Initialize widget with new options
-    function initializeWidget() {
-        // ... Previous initialization code ...
+        showChatInterface(response) {
+            this.widget.querySelector('.welcome-screen').style.display = 'none';
+            this.widget.querySelector('.lead-form').classList.remove('active');
+            
+            const chatInterface = this.widget.querySelector('.chat-interface');
+            chatInterface.classList.add('active');
 
-        // Add event listeners for chat options
-        const chatOptions = document.querySelectorAll('.chat-option-btn');
-        chatOptions.forEach(button => {
-            button.addEventListener('click', () => {
-                const webhookId = button.dataset.webhookId;
-                startNewConversation(webhookId);
-            });
-        });
+            if (response.output || (Array.isArray(response) && response[0].output)) {
+                this.addMessage(response.output || response[0].output, 'bot');
+            }
+        }
 
-        // Add event listener for lead form submission
-        const submitLeadBtn = document.querySelector('.submit-lead-btn');
-        if (submitLeadBtn) {
-            submitLeadBtn.addEventListener('click', async (e) => {
-                e.preventDefault();
-                const form = document.querySelector('.lead-form');
-                if (form.checkValidity()) {
-                    await submitLeadData();
-                } else {
-                    form.reportValidity();
-                }
-            });
+        addMessage(message, type) {
+            const messagesContainer = this.widget.querySelector('.chat-messages');
+            const messageElement = document.createElement('div');
+            messageElement.className = `chat-message ${type}`;
+            messageElement.textContent = message;
+            messagesContainer.appendChild(messageElement);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        showError(message) {
+            // Implement error display logic
+            console.error(message);
+            // You could add a toast notification or error message in the UI
         }
     }
 
-    // Initialize the widget
-    initializeWidget();
+    // Initialize the chat widget if config is available
+    if (window.ChatWidgetConfig) {
+        window.n8nChat = new N8nChat(window.ChatWidgetConfig);
+    }
 })();
