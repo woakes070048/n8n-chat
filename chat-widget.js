@@ -1,4 +1,3 @@
-// n8n-chat.js
 (function() {
     // Load Geist font
     const fontLink = document.createElement('link');
@@ -261,10 +260,8 @@
             left: 20px;
         }
 
-        .n8n-chat-widget .chat-toggle svg {
-            width: 24px;
-            height: 24px;
-            fill: currentColor;
+        .n8n-chat-widget .chat-toggle:hover {
+            transform: scale(1.05);
         }
 
         .n8n-chat-widget .chat-footer {
@@ -284,21 +281,6 @@
 
         .n8n-chat-widget .chat-footer a:hover {
             opacity: 1;
-        }
-
-        .n8n-chat-widget .loading {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top-color: white;
-            animation: spin 1s ease-in-out infinite;
-            margin-right: 8px;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
         }
     `;
 
@@ -357,70 +339,77 @@
             const widget = document.createElement('div');
             widget.className = 'n8n-chat-widget';
             
-            // Set custom colors
             widget.style.setProperty('--n8n-chat-primary-color', this.config.style.primaryColor);
             widget.style.setProperty('--n8n-chat-secondary-color', this.config.style.secondaryColor);
 
-            widget.innerHTML = `
-                <div class="chat-container${this.config.style.position === 'left' ? ' position-left' : ''}">
-                    <div class="brand-header">
-                        <img src="${this.config.branding.logo}" alt="${this.config.branding.name}">
-                        <span>${this.config.branding.name}</span>
-                        <button class="close-button">×</button>
-                    </div>
-                    <div class="chat-content">
-                        <div class="welcome-screen">
-                            <h2 class="welcome-text">${this.config.branding.welcomeText}</h2>
-                            <div class="chat-buttons">
-                                ${this.config.webhooks.map(webhook => `
-                                    <button class="chat-button" data-webhook-id="${webhook.id}">
-                                        ${webhook.icon} ${webhook.name}
-                                    </button>
-                                `).join('')}
-                            </div>
-                            <p class="response-text">${this.config.branding.responseTimeText}</p>
-                        </div>
-                        
-                        <div class="lead-form">
-                            <form id="leadForm">
-                                ${this.config.leadCollection.fields.map(field => `
-                                    <div class="form-field">
-                                        <label for="${field.name}">${field.label}</label>
-                                        <input 
-                                            type="${field.type || 'text'}"
-                                            id="${field.name}"
-                                            name="${field.name}"
-                                            ${field.required ? 'required' : ''}
-                                            placeholder="${field.placeholder || ''}"
-                                        >
-                                    </div>
-                                `).join('')}
-                                <button type="submit" class="chat-button">Start Chat</button>
-                            </form>
-                        </div>
-
-                        <div class="chat-interface">
-                            <div class="chat-messages"></div>
-                            <div class="chat-input">
-                                <textarea placeholder="Type your message..." rows="1"></textarea>
-                                <button type="submit">Send</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="chat-footer">
-                        <a href="${this.config.branding.poweredBy.link}" target="_blank">
-                            ${this.config.branding.poweredBy.text}
-                        </a>
-                    </div>
+            const chatContainer = document.createElement('div');
+            chatContainer.className = `chat-container${this.config.style.position === 'left' ? ' position-left' : ''}`;
+            
+            // Create welcome screen with chat buttons
+            const welcomeScreen = document.createElement('div');
+            welcomeScreen.className = 'welcome-screen';
+            welcomeScreen.innerHTML = `
+                <h2 class="welcome-text">${this.config.branding.welcomeText}</h2>
+                <div class="chat-buttons">
+                    ${this.config.webhooks.map(webhook => `
+                        <button class="chat-button" data-webhook-id="${webhook.id}">
+                            ${webhook.icon} ${webhook.name}
+                        </button>
+                    `).join('')}
                 </div>
-                
-                <button class="chat-toggle${this.config.style.position === 'left' ? ' position-left' : ''}">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                        <path d="M12 2C6.477 2 2 6.477 2 12c0 1.821.487 3.53 1.338 5L2.5 21.5l4.5-.838A9.955 9.955 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18c-1.476 0-2.886-.313-4.156-.878l-3.156.586.586-3.156A7.962 7.962 0 014 12c0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8z"/>
-                    </svg>
-                </button>
+                <p class="response-text">${this.config.branding.responseTimeText}</p>
             `;
 
+            // Create lead form if enabled
+            const leadForm = document.createElement('div');
+            leadForm.className = 'lead-form';
+            if (this.config.leadCollection.enabled) {
+                leadForm.innerHTML = `
+                    <form id="leadForm">
+                        ${this.config.leadCollection.fields.map(field => `
+                            <div class="form-field">
+                                <label for="${field.name}">${field.label}</label>
+                                <input 
+                                    type="${field.type || 'text'}"
+                                    id="${field.name}"
+                                    name="${field.name}"
+                                    ${field.required ? 'required' : ''}
+                                    placeholder="${field.placeholder || ''}"
+                                >
+                            </div>
+                        `).join('')}
+                        <button type="submit" class="chat-button">Start Chat</button>
+                    </form>
+                `;
+            }
+
+            // Create chat interface
+            const chatInterface = document.createElement('div');
+            chatInterface.className = 'chat-interface';
+            chatInterface.innerHTML = `
+                <div class="chat-messages"></div>
+                <div class="chat-input">
+                    <textarea placeholder="Type your message..." rows="1"></textarea>
+                    <button type="submit">Send</button>
+                </div>
+            `;
+
+            // Create toggle button
+            const toggleButton = document.createElement('button');
+            toggleButton.className = `chat-toggle${this.config.style.position === 'left' ? ' position-left' : ''}`;
+            toggleButton.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                    <path fill="currentColor" d="M12 2C6.477 2 2 6.477 2 12c0 1.821.487 3.53 1.338 5L2.5 21.5l4.5-.838A9.955 9.955 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18c-1.476 0-2.886-.313-4.156-.878l-3.156.586.586-3.156A7.962 7.962 0 014 12c0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8z"/>
+                </svg>
+            `;
+
+            // Assemble widget
+            chatContainer.appendChild(welcomeScreen);
+            chatContainer.appendChild(leadForm);
+            chatContainer.appendChild(chatInterface);
+            
+            widget.appendChild(chatContainer);
+            widget.appendChild(toggleButton);
             document.body.appendChild(widget);
             this.widget = widget;
         }
@@ -432,9 +421,12 @@
             });
 
             // Close button
-            this.widget.querySelector('.close-button').addEventListener('click', () => {
-                this.widget.querySelector('.chat-container').classList.remove('open');
-            });
+            const closeButton = this.widget.querySelector('.close-button');
+            if (closeButton) {
+                closeButton.addEventListener('click', () => {
+                    this.widget.querySelector('.chat-container').classList.remove('open');
+                });
+            }
 
             // Chat buttons
             this.widget.querySelectorAll('.chat-button').forEach(button => {
@@ -447,32 +439,46 @@
             // Lead form submission
             if (this.config.leadCollection.enabled) {
                 const form = this.widget.querySelector('#leadForm');
-                form.addEventListener('submit', (e) => {
-                    e.preventDefault();
-                    this.handleLeadSubmission(new FormData(form));
-                });
+                if (form) {
+                    form.addEventListener('submit', (e) => {
+                        e.preventDefault();
+                        this.handleLeadSubmission(new FormData(form));
+                    });
+                }
             }
 
             // Send message
             const sendButton = this.widget.querySelector('.chat-input button');
             const textarea = this.widget.querySelector('.chat-input textarea');
 
-            sendButton.addEventListener('click', () => {
-                this.sendMessage(textarea.value);
-            });
+            if (sendButton && textarea) {
+                sendButton.addEventListener('click', () => {
+                    const message = textarea.value.trim();
+                    if (message) {
+                        this.sendMessage(message);
+                        textarea.value = '';
+                        textarea.style.height = 'auto';
+                    }
+                });
 
-            textarea.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    this.sendMessage(textarea.value);
-                }
-            });
+                textarea.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        const message = textarea.value.trim();
+                        if (message) {
+                            this.sendMessage(message);
+                            textarea.value = '';
+                            textarea.style.height = 'auto';
+                        }
+                    }
+                });
 
-            // Auto-resize textarea
-            textarea.addEventListener('input', () => {
-                textarea.style.height = 'auto';
-                textarea.style.height = textarea.scrollHeight + 'px';
-            });
+                // Auto-resize textarea
+                textarea.addEventListener('input', () => {
+                    textarea.style.height = 'auto';
+                    textarea.style.height = textarea.scrollHeight + 'px';
+                });
+            }
         }
 
         async handleWebhookSelection(webhookId) {
@@ -520,11 +526,12 @@
         async sendMessage(message) {
             if (!message.trim()) return;
 
-            const textarea = this.widget.querySelector('.chat-input textarea');
-            textarea.value = '';
-            textarea.style.height = 'auto';
-
-            this.addMessage(message, 'user');
+            const messagesContainer = this.widget.querySelector('.chat-messages');
+            const userMessageElement = document.createElement('div');
+            userMessageElement.className = 'chat-message user';
+            userMessageElement.textContent = message;
+            messagesContainer.appendChild(userMessageElement);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
             const data = {
                 action: "sendMessage",
@@ -538,7 +545,13 @@
 
             try {
                 const response = await this.sendWebhookRequest(this.currentWebhook.url, data);
-                this.addMessage(response.output || response[0].output, 'bot');
+                const botResponse = response.output || (Array.isArray(response) ? response[0].output : '');
+                
+                const botMessageElement = document.createElement('div');
+                botMessageElement.className = 'chat-message bot';
+                botMessageElement.textContent = botResponse;
+                messagesContainer.appendChild(botMessageElement);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
             } catch (error) {
                 console.error('Error sending message:', error);
                 this.showError('Failed to send message. Please try again.');
@@ -568,24 +581,21 @@
             const chatInterface = this.widget.querySelector('.chat-interface');
             chatInterface.classList.add('active');
 
-            if (response.output || (Array.isArray(response) && response[0].output)) {
-                this.addMessage(response.output || response[0].output, 'bot');
+            if (response && (response.output || (Array.isArray(response) && response[0].output))) {
+                const botMessageElement = document.createElement('div');
+                botMessageElement.className = 'chat-message bot';
+                botMessageElement.textContent = response.output || response[0].output;
+                this.widget.querySelector('.chat-messages').appendChild(botMessageElement);
             }
         }
 
-        addMessage(message, type) {
-            const messagesContainer = this.widget.querySelector('.chat-messages');
-            const messageElement = document.createElement('div');
-            messageElement.className = `chat-message ${type}`;
-            messageElement.textContent = message;
-            messagesContainer.appendChild(messageElement);
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        }
-
         showError(message) {
-            // Implement error display logic
             console.error(message);
-            // You could add a toast notification or error message in the UI
+            // Add error message to chat if needed
+            const errorElement = document.createElement('div');
+            errorElement.className = 'chat-message bot error';
+            errorElement.textContent = message;
+            this.widget.querySelector('.chat-messages').appendChild(errorElement);
         }
     }
 
